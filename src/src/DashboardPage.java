@@ -1,28 +1,33 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.*;
+import java.net.URI;
 import java.util.List;
 
 public class DashboardPage extends JFrame {
     private String username;
     private String hospitalName;
+    private String hospitalEmail; // ✅ This variable now exists
 
-    public DashboardPage(String username, String hospitalName) {
+    // ✅ Constructor now accepts the hospitalEmail
+    public DashboardPage(String username, String hospitalName, String hospitalEmail) {
         this.username = username;
         this.hospitalName = hospitalName;
+        this.hospitalEmail = hospitalEmail; // ✅ And it's stored here
 
         setTitle("Dashboard - " + hospitalName);
-        setSize(700, 500);
+        setSize(1200, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // 🌈 Gradient background
+        // 🌈 Main Background Panel with Gradient
         JPanel mainPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g;
-                GradientPaint gp = new GradientPaint(0, 0, new Color(255, 240, 240), 0, getHeight(), Color.WHITE);
+                GradientPaint gp = new GradientPaint(0, 0, new Color(255, 235, 235), getWidth(), getHeight(), Color.WHITE);
                 g2d.setPaint(gp);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
             }
@@ -30,109 +35,196 @@ public class DashboardPage extends JFrame {
         mainPanel.setLayout(new BorderLayout());
         add(mainPanel);
 
-        // 🔴 Header
-        JPanel headerPanel = new JPanel(new GridLayout(3, 1));
-        headerPanel.setBackground(new Color(178, 34, 34)); // deep red
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 10, 15, 10));
+        // 🧭 Left Sidebar (Navigation Panel)
+        JPanel sidePanel = new JPanel();
+        sidePanel.setBackground(new Color(178, 34, 34)); // deep red
+        sidePanel.setPreferredSize(new Dimension(220, getHeight()));
+        sidePanel.setLayout(new BoxLayout(sidePanel, BoxLayout.Y_AXIS));
+        sidePanel.setBorder(BorderFactory.createEmptyBorder(30, 10, 30, 10));
 
-        JLabel welcomeLabel = new JLabel("  Welcome, " + hospitalName, SwingConstants.CENTER);
-        welcomeLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-        welcomeLabel.setForeground(Color.WHITE);
+        JLabel logoLabel = new JLabel("🏥 MEDFLY", SwingConstants.CENTER);
+        logoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        logoLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+        logoLabel.setForeground(Color.WHITE);
+        logoLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 40, 0));
 
-        JLabel hubLabel = new JLabel("📍 Pickup Hub: SRM Global Hospital", SwingConstants.CENTER);
-        hubLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        hubLabel.setForeground(Color.WHITE);
+        JButton dashboardBtn = createNavButton("🏠  Dashboard");
 
-        JLabel addressLabel = new JLabel("☎  Mahatma Gandhi Rd, Potheri | Kattankulathur, Tamil Nadu 603203 | Emergency: 044 4743 2350", SwingConstants.CENTER);
-        addressLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        addressLabel.setForeground(Color.WHITE);
+        // --- Orders Button Fix ---
+        JButton ordersBtn = createNavButton("📦  Orders");
+        ordersBtn.addActionListener(e -> {
+            // ✅ Now passes the email
+            new OrdersPage(username, hospitalName, hospitalEmail);
+            dispose();
+        });
 
-        headerPanel.add(welcomeLabel);
-        headerPanel.add(hubLabel);
-        headerPanel.add(addressLabel);
-        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        // --- Contact Button Fix ---
+        JButton contactBtn = createNavButton("✉  Contact Admin");
+        contactBtn.addActionListener(e -> {
+            // ✅ Now passes the email
+            new ContactAdminPage(username, hospitalName, hospitalEmail);
+            dispose();
+        });
 
-        // 🩸 Center Panel (Data Section)
-        JPanel centerPanel = new JPanel();
-        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
-        centerPanel.setOpaque(false);
-        centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
+        // Add event to Contact Admin
+        contactBtn.addActionListener(e -> {
+            try {
+                Desktop.getDesktop().browse(new URI("mailto:admin_support@srmhospital.org"));
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(null, "Unable to open mail app!");
+            }
+        });
 
-        JLabel resourceTitle = new JLabel("Available Resources");
-        resourceTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
-        resourceTitle.setForeground(new Color(178, 34, 34));
-        resourceTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centerPanel.add(resourceTitle);
-        centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
+        sidePanel.add(logoLabel);
+        sidePanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        sidePanel.add(dashboardBtn);
+        sidePanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        sidePanel.add(ordersBtn);
+        sidePanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        sidePanel.add(contactBtn);
+        sidePanel.add(Box.createVerticalGlue());
+
+        mainPanel.add(sidePanel, BorderLayout.WEST);
+
+        // 🔝 Top Bar
+        JPanel topBar = new JPanel(new BorderLayout());
+        topBar.setBackground(new Color(255, 250, 250));
+        topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(200, 200, 200)));
+        topBar.setPreferredSize(new Dimension(getWidth(), 60));
+
+        JLabel titleLabel = new JLabel("Welcome, " + hospitalName);
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 17));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
+        titleLabel.setForeground(new Color(120, 0, 0));
+
+        JButton logoutButton = new JButton("Logout ⎋");
+        logoutButton.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        logoutButton.setBackground(new Color(255, 240, 240));
+        logoutButton.setForeground(new Color(178, 34, 34));
+        logoutButton.setFocusPainted(false);
+        logoutButton.setBorder(BorderFactory.createLineBorder(new Color(178, 34, 34), 1, true));
+        logoutButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        logoutButton.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                logoutButton.setBackground(new Color(178, 34, 34));
+                logoutButton.setForeground(Color.WHITE);
+            }
+
+            public void mouseExited(MouseEvent e) {
+                logoutButton.setBackground(new Color(255, 240, 240));
+                logoutButton.setForeground(new Color(178, 34, 34));
+            }
+        });
+
+        topBar.add(titleLabel, BorderLayout.WEST);
+        topBar.add(logoutButton, BorderLayout.EAST);
+        mainPanel.add(topBar, BorderLayout.NORTH);
+
+        // 🩸 Center Content (Main Dashboard area)
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setOpaque(false);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+
+        JLabel title = new JLabel("🩺 Available Resources");
+        title.setFont(new Font("SansSerif", Font.BOLD, 22));
+        title.setForeground(new Color(178, 34, 34));
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        contentPanel.add(title);
+        contentPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+
+        // Blood Section
+        JLabel bloodLabel = new JLabel("🩸 Blood Types:");
+        bloodLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
+        contentPanel.add(bloodLabel);
 
         List<String> bloodItems = BloodInventory.getAllItems();
-        List<String> organItems = OrganInventory.getAllItems();
-
-        // Blood section
-        JLabel bloodLabel = new JLabel("🩸 Blood Types:");
-        bloodLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
-        bloodLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        centerPanel.add(bloodLabel);
-
         for (String item : bloodItems) {
             JLabel lbl = new JLabel("   ➤  " + item);
-            lbl.setFont(new Font("Monospaced", Font.PLAIN, 13));
-            centerPanel.add(lbl);
+            lbl.setFont(new Font("Monospaced", Font.PLAIN, 14));
+            contentPanel.add(lbl);
         }
 
-        centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
+        contentPanel.add(Box.createRigidArea(new Dimension(0, 20)));
 
-        // Organ section
+        // Organ Section
         JLabel organLabel = new JLabel("❤️ Organs for Transplant:");
-        organLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
-        organLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        centerPanel.add(organLabel);
+        organLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
+        contentPanel.add(organLabel);
 
+        List<String> organItems = OrganInventory.getAllItems();
         for (String item : organItems) {
             JLabel lbl = new JLabel("   ➤  " + item);
-            lbl.setFont(new Font("Monospaced", Font.PLAIN, 13));
-            centerPanel.add(lbl);
+            lbl.setFont(new Font("Monospaced", Font.PLAIN, 14));
+            contentPanel.add(lbl);
         }
 
-        JScrollPane scrollPane = new JScrollPane(centerPanel);
+        JScrollPane scrollPane = new JScrollPane(contentPanel);
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // 🟢 Footer: Place Order button
-        JPanel footerPanel = new JPanel();
-        footerPanel.setOpaque(false);
-        JButton orderButton = new JButton("➕  Place Order");
-        orderButton.setFont(new Font("SansSerif", Font.BOLD, 15));
-        orderButton.setBackground(new Color(178, 34, 34));
-        orderButton.setForeground(Color.WHITE);
-        orderButton.setFocusPainted(false);
-        orderButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        orderButton.setBorder(BorderFactory.createEmptyBorder(10, 30, 10, 30));
-        orderButton.setBorder(BorderFactory.createLineBorder(new Color(178, 34, 34), 2, true));
+        // 🟢 Floating "Place Order" Button (bottom-right corner)
+        JButton placeOrderBtn = new JButton("➕  Place Order");
+        placeOrderBtn.setFont(new Font("SansSerif", Font.BOLD, 15));
+        placeOrderBtn.setBackground(new Color(178, 34, 34));
+        placeOrderBtn.setForeground(Color.WHITE);
+        placeOrderBtn.setFocusPainted(false);
+        placeOrderBtn.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        placeOrderBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Hover effect
-        orderButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                orderButton.setBackground(Color.WHITE);
-                orderButton.setForeground(new Color(178, 34, 34));
+        placeOrderBtn.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                placeOrderBtn.setBackground(Color.WHITE);
+                placeOrderBtn.setForeground(new Color(178, 34, 34));
             }
 
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                orderButton.setBackground(new Color(178, 34, 34));
-                orderButton.setForeground(Color.WHITE);
+            public void mouseExited(MouseEvent e) {
+                placeOrderBtn.setBackground(new Color(178, 34, 34));
+                placeOrderBtn.setForeground(Color.WHITE);
             }
         });
 
-        orderButton.addActionListener(e -> {
-            new OrderPage(username, hospitalName);
+        // --- Place Order Button Fix ---
+        placeOrderBtn.addActionListener(e -> {
+            // ✅ Passes the real hospitalName and hospitalEmail
+            new OrderPage(hospitalName, hospitalEmail);
             dispose();
         });
 
-        footerPanel.add(orderButton);
-        mainPanel.add(footerPanel, BorderLayout.SOUTH);
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setOpaque(false);
+        buttonPanel.add(placeOrderBtn);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         setVisible(true);
+    }
+
+    // 🔧 Helper method to create side buttons
+    private JButton createNavButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        btn.setFocusPainted(false);
+        btn.setBackground(new Color(178, 34, 34));
+        btn.setForeground(Color.WHITE);
+        btn.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        btn.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                btn.setBackground(new Color(255, 240, 240));
+                btn.setForeground(new Color(178, 34, 34));
+            }
+
+            public void mouseExited(MouseEvent e) {
+                btn.setBackground(new Color(178, 34, 34));
+                btn.setForeground(Color.WHITE);
+            }
+        });
+
+        return btn;
     }
 }

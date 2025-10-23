@@ -8,11 +8,14 @@ public class ConfirmationPage extends JFrame {
     private String hospitalName;
     private String item;
     private int quantity;
+    private int otp; // ✅ FIX 1: Add variable to store the OTP
 
-    public ConfirmationPage(String hospitalName, String item, int quantity) {
+    // ✅ FIX 2: Update the constructor to accept the OTP
+    public ConfirmationPage(String hospitalName, String item, int quantity, int otp) {
         this.hospitalName = hospitalName;
         this.item = item;
         this.quantity = quantity;
+        this.otp = otp; // Store the passed-in OTP
 
         setTitle("🚁 Drone Dispatch Confirmation");
         setSize(650, 500);
@@ -20,6 +23,7 @@ public class ConfirmationPage extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
+        // (All your UI code is untouched...)
         // 🌈 Gradient Background
         JPanel bgPanel = new JPanel() {
             protected void paintComponent(Graphics g) {
@@ -134,7 +138,8 @@ public class ConfirmationPage extends JFrame {
                             statusLabel.setText("🎯 Drone reached " + hospitalName + " successfully!");
                             JOptionPane.showMessageDialog(null, "✅ Drone has reached the hospital!\nProceed to OTP Verification.", "Delivery Complete", JOptionPane.INFORMATION_MESSAGE);
 
-                            new VerificationPage(hospitalName, item, quantity);
+                            // ✅ FIX 3: Pass the OTP to the VerificationPage
+                            new VerificationPage(hospitalName, item, quantity, otp);
                             dispose();
                         }
                     }
@@ -146,7 +151,7 @@ public class ConfirmationPage extends JFrame {
         setVisible(true);
     }
 
-    // Helper Label Creator
+    // (Helper methods are untouched...)
     private JLabel createLabel(String text) {
         JLabel label = new JLabel(text);
         label.setFont(new Font("Segoe UI", Font.PLAIN, 15));
@@ -154,7 +159,6 @@ public class ConfirmationPage extends JFrame {
         return label;
     }
 
-    // 🌍 Haversine Formula
     private double haversine(double lat1, double lon1, double lat2, double lon2) {
         final int R = 6371;
         double dLat = Math.toRadians(lat2 - lat1);

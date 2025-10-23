@@ -1,23 +1,27 @@
 import javax.swing.*;
 import java.awt.*;
 import java.sql.*;
+import java.util.Properties;
 import java.util.Random;
+import jakarta.mail.*;
+import jakarta.mail.internet.*;
 
 public class OrderPage extends JFrame {
-    private String username;
     private String hospitalName;
+    private String hospitalEmail; // ✅ Email for sending order OTP
 
-    public OrderPage(String username, String hospitalName) {
-        this.username = username;
+    public OrderPage(String hospitalName, String hospitalEmail) {
         this.hospitalName = hospitalName;
+        // ✅ This cleans the email from the database
+        this.hospitalEmail = hospitalEmail.replaceAll("[\\s\\p{Cntrl}]+", "");
 
         setTitle("Place Order - " + hospitalName);
-        setSize(550, 480);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(550, 500);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // 🌈 Gradient background
+        // 🌈 Gradient Background
         JPanel mainPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -38,7 +42,7 @@ public class OrderPage extends JFrame {
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
         mainPanel.add(titleLabel, BorderLayout.NORTH);
 
-        // ⚙️ Center Form Panel
+        // ⚙️ Form Panel
         JPanel formPanel = new JPanel(new GridLayout(6, 1, 10, 10));
         formPanel.setOpaque(false);
         formPanel.setBorder(BorderFactory.createEmptyBorder(30, 80, 30, 80));
@@ -82,14 +86,13 @@ public class OrderPage extends JFrame {
         confirmButton.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
         confirmButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Hover effect
+        // Hover Effect
         confirmButton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 confirmButton.setBackground(Color.WHITE);
                 confirmButton.setForeground(new Color(178, 34, 34));
                 confirmButton.setBorder(BorderFactory.createLineBorder(new Color(178, 34, 34), 2));
             }
-
             public void mouseExited(java.awt.event.MouseEvent evt) {
                 confirmButton.setBackground(new Color(178, 34, 34));
                 confirmButton.setForeground(Color.WHITE);
@@ -102,7 +105,7 @@ public class OrderPage extends JFrame {
         footerPanel.add(confirmButton);
         mainPanel.add(footerPanel, BorderLayout.SOUTH);
 
-        // ✅ Confirm Button Action
+        // 🔑 Confirm Button Action
         confirmButton.addActionListener(e -> {
             String selectedBlood = (String) bloodDropdown.getSelectedItem();
             String selectedOrgan = (String) organDropdown.getSelectedItem();
@@ -133,75 +136,92 @@ public class OrderPage extends JFrame {
             }
 
             int quantity = Integer.parseInt(qtyText);
-            int otp = 1000 + new Random().nextInt(9000);
+            int otp = 100000 + new Random().nextInt(900000); // ✅ 6-digit OTP for order
 
-            String inventoryTable = isBlood ? "blood_inventory" : "organ_inventory";
-            String quantityColumn = isBlood ? "quantity_units" : "quantity";
-            String itemColumn = isBlood ? "blood_type" : "organ_type";
-
-            try {
-                Connection conn = DriverManager.getConnection(
-                        "jdbc:mysql://localhost:3306/dronedb", "root", "Sathishdhana#23"
-                );
-
-                // Check stock
-                String checkQuery = "SELECT " + quantityColumn + " FROM " + inventoryTable + " WHERE " + itemColumn + " = ?";
-                PreparedStatement checkStmt = conn.prepareStatement(checkQuery);
-                checkStmt.setString(1, item);
-                ResultSet rs = checkStmt.executeQuery();
-
-                if (rs.next()) {
-                    int available = rs.getInt(quantityColumn);
-                    if (quantity > available) {
-                        JOptionPane.showMessageDialog(this,
-                                "⚠ Not enough stock.\nAvailable: " + available + " units.",
-                                "Stock Alert", JOptionPane.WARNING_MESSAGE);
-                        conn.close();
-                        return;
-                    }
-                } else {
-                    JOptionPane.showMessageDialog(this, "❌ Item not found in " + inventoryTable + ".", "Error", JOptionPane.ERROR_MESSAGE);
-                    conn.close();
-                    return;
-                }
+            try (Connection conn = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/dronedb", "root", "Sathishdhana#23")) {
 
                 // Insert order
                 String insertQuery = "INSERT INTO orders (hospital_name, item, quantity, status, otp_code) VALUES (?, ?, ?, ?, ?)";
-                PreparedStatement insertStmt = conn.prepareStatement(insertQuery);
-                insertStmt.setString(1, hospitalName);
-                insertStmt.setString(2, item);
-                insertStmt.setInt(3, quantity);
-                insertStmt.setString(4, "Pending");
-                insertStmt.setInt(5, otp);
-                int rows = insertStmt.executeUpdate();
+                PreparedStatement stmt = conn.prepareStatement(insertQuery);
+                stmt.setString(1, hospitalName);
+                stmt.setString(2, item);
+                stmt.setInt(3, quantity);
+                stmt.setString(4, "Pending");
+                stmt.setInt(5, otp);
+                int rows = stmt.executeUpdate();
+
+                // Inside OrderPage.java, in the confirmButton listener...
 
                 if (rows > 0) {
-                    // Update inventory
-                    String updateQuery = "UPDATE " + inventoryTable + " SET " + quantityColumn + " = " + quantityColumn + " - ? WHERE " + itemColumn + " = ?";
-                    PreparedStatement updateStmt = conn.prepareStatement(updateQuery);
-                    updateStmt.setInt(1, quantity);
-                    updateStmt.setString(2, item);
-                    updateStmt.executeUpdate();
+                    // Send OTP to hospital email
+                    sendOrderOTP(hospitalEmail, item, quantity, otp);
 
                     JOptionPane.showMessageDialog(this,
-                            "✅ Order Placed Successfully!\n\n" +
+                            "✅ Order Placed Successfully!\n" +
                                     "Item: " + item + "\nQuantity: " + quantity + "\nStatus: Pending\n" +
-                                    "Delivery Code (OTP): " + otp,
+                                    "Delivery OTP sent to your email.",
                             "Order Success", JOptionPane.INFORMATION_MESSAGE);
 
-                    new ConfirmationPage(hospitalName, item, quantity);
-                    dispose();
+                    // ❌ THIS WAS MY OLD, BAD SUGGESTION:
+                    // new DispatchPage(String.valueOf(otp));
+
+                    // ✅ THIS IS THE CORRECT FIX:
+                    // Open the ConfirmationPage and pass it all the info
+                    new ConfirmationPage(hospitalName, item, quantity, otp);
+                    dispose(); // Close the OrderPage
+
                 } else {
                     JOptionPane.showMessageDialog(this, "❌ Failed to register order.", "Database Error", JOptionPane.ERROR_MESSAGE);
                 }
 
-                conn.close();
+                // ✅ THIS IS THE FIX
+            } catch (Exception ex) {
 
-            } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(this, "❌ Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                // THIS IS THE NEW LINE:
+                System.out.println("DEBUG: The bad email address is: >>>" + hospitalEmail + "<<<");
+
+                ex.printStackTrace(); // This gives us more detail in the console
+
+                JOptionPane.showMessageDialog(this, "❌ Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
         setVisible(true);
+    }
+
+    // --- Send Order OTP ---
+    private void sendOrderOTP(String recipientEmail, String item, int quantity, int otp) throws MessagingException {
+        final String SENDER_EMAIL = "jsabishek77@gmail.com";
+        final String SENDER_PASSWORD = "veig xhwe aaie rgxt";
+
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", "smtp.gmail.com");
+        props.put("mail.smtp.port", "587");
+
+        Session session = Session.getInstance(props, new Authenticator() {
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(SENDER_EMAIL, SENDER_PASSWORD);
+            }
+        });
+
+        Message message = new MimeMessage(session);
+
+        //
+        // ✅ ✅ ✅ THIS IS THE FINAL FIX ✅ ✅ ✅
+        // This cleans both emails of ALL hidden spaces and control characters
+        //
+        message.setFrom(new InternetAddress(SENDER_EMAIL.replaceAll("[\\s\\p{Cntrl}]+", "")));
+        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail.replaceAll("[\\s\\p{Cntrl}]+", "")));
+
+        message.setSubject("Order OTP - Drone Medical System");
+        message.setText("Dear " + hospitalName + ",\n\n" +
+                "Your order has been placed successfully!\n\n" +
+                "Item: " + item + "\nQuantity: " + quantity + "\nDelivery OTP: " + otp + "\n\n" +
+                "This OTP is valid for verification at delivery.\n\n- Drone Medical System Team");
+
+        Transport.send(message);
     }
 }

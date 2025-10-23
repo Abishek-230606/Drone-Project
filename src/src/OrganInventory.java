@@ -9,14 +9,14 @@ public class OrganInventory {
             Connection conn = DriverManager.getConnection(
                     "jdbc:mysql://localhost:3306/dronedb", "root", "Sathishdhana#23"
             );
-            PreparedStatement stmt = conn.prepareStatement("SELECT organ_type, quantity, urgency_level FROM organ_inventory");
+            String query = "SELECT organ_type, quantity FROM organ_inventory"; // updated query
+            PreparedStatement stmt = conn.prepareStatement(query);
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
                 String organ = rs.getString("organ_type");
                 int qty = rs.getInt("quantity");
-                String urgency = rs.getString("urgency_level");
-                items.add(organ + " : " + qty + " units | Urgency: " + urgency);
+                items.add(organ + " - " + qty + " units"); // add to list
             }
 
             conn.close();
